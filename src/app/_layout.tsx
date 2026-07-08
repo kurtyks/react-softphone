@@ -1,18 +1,40 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { Stack } from 'expo-router';
+import { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { NotificationDisplay } from '@/components/NotificationDisplay';
+import { RemoteAudio } from '@/components/RemoteAudio';
+import { checkMediaPermissions } from '@/lib/mediaService';
+import { initProfiles } from '@/lib/profiles';
+import { autoConnect } from '@/lib/sip/softphone';
+import { colors } from '@/theme';
 
-SplashScreen.preventAutoHideAsync();
+export default function RootLayout() {
+  // One-time startup: probe the mic permission (WITHOUT capturing — the mic is only
+  // acquired for the duration of a call), then init profiles and auto-connect.
+  useEffect(() => {
+    (async () => {
+      await checkMediaPermissions();
+      initProfiles();
+      autoConnect();
+    })();
+  }, []);
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <View style={styles.root}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.black }
+        }}
+      />
+      {/* Global, persistent across route changes. */}
+      <RemoteAudio />
+      <NotificationDisplay />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.black }
+});

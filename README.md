@@ -1,56 +1,161 @@
-# Welcome to your Expo app 👋
+# Softphone FE (React Native / Expo Web)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A developer/testing **WebRTC softphone** built with **Expo + React Native (react-native-web)**
+and [JsSIP](https://jssip.net/). It places and receives SIP calls over secure WebSocket (WSS),
+supports STUN/TURN, and interoperates with **Asterisk**, **Kamailio** and **FreeSWITCH**.
 
-## Get started
+This is the React Native re-implementation of the original SvelteKit softphone. It targets the
+**web** (react-native-web on react-dom) so the browser WebRTC stack (`RTCPeerConnection`,
+`getUserMedia`, `getStats()`) and jssip work unchanged, and the app ships as a Docker image.
 
-1. Install dependencies
+> The UI is in Polish; all code and comments are in English. It is a **tool for developers** to
+> debug SIP / WebSocket / WebRTC — not a mass-market app.
 
-   ```bash
-   npm install
-   ```
+## Features
 
-2. Start the app
+- **Outgoing & incoming audio calls** over SIP/WSS.
+- **Multiple account profiles** with one-click switching (test several backends fast).
+- **GUI configuration** of everything: SIP URI, credentials, WS servers, STUN/TURN (with
+  credentials), and **ICE transport policy** (`all` / `relay`).
+- **Smart recovery**: ICE restart on network change (WiFi ↔ LTE), ICE restart on ICE failure
+  (debounced), automatic WebSocket reconnect.
+- **Live diagnostics panel**: WS state, registration, ICE connection/gathering state, the selected
+  media path (`host`/`srflx`/`relay`), live RTP metrics (codec, jitter, packet loss, RTT, in/out
+  bitrate), an ICE-restart counter, and a SIP/WebRTC event log. Always visible as a sidebar on
+  desktop; available at `/diagnostics` on narrow screens.
+- In-call controls: mute, hold, DTMF (RFC2833 or SIP INFO), blind transfer.
+- Microphone selection + input level meter, call history.
 
-   ```bash
-   npx expo start
-   ```
+## Tech stack
 
-In the output, you'll find options to open the app in a
+- **Expo SDK 57**, **React Native 0.86**, **react-native-web**, **expo-router**, **TypeScript**
+- **jssip ^3.10** for SIP signalling and WebRTC
+- A tiny dependency-free reactive store (`src/lib/store.ts`) + a `useStore` hook — the state layer
+  and the SIP orchestrator are ported from the original almost verbatim.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+The app runs **client-side only** (`app.json` → `web.output: "single"`, an SPA), because it relies
+on WebRTC, `getUserMedia`, jssip and `localStorage`.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Getting started
 
-## Get a fresh project
-
-When you're ready, run:
+Requirements: Node.js 18+ and npm.
 
 ```bash
-npm run reset-project
+npm install
+npm run web          # Expo dev server (web) — opens http://localhost:8081
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Other scripts:
 
-### Other setup steps
+```bash
+npm run test         # Vitest unit suite (pure logic: SIP core + state)
+npm run test:watch   # Vitest watch mode
+npx tsc --noEmit     # type check
+npx expo export -p web   # production web build → ./dist
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+> Microphone access needs a **secure context**: HTTPS, or `localhost` during development.
 
-## Learn more
+## Testing
 
-To learn more about developing your project with Expo, look at the following resources:
+Unit tests use **Vitest** (jsdom) and focus on the pure, deterministic logic so they run without a
+browser, microphone or SIP backend:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- `src/lib/sip/stats.test.ts` — `getStats()` parsing (ICE pair + RTP metrics, bitrate deltas).
+- `src/lib/sip/config.test.ts` — default profile, normalization, legacy migration, config builders.
+- `src/lib/profiles.test.ts` — profile CRUD and initialization.
+- `src/lib/sip/softphone.test.ts` — orchestrator: engine-event → store mapping (jssip mocked).
 
-## Join the community
+```bash
+npm run test
+```
 
-Join our community of developers creating universal apps.
+## Docker
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Multi-stage build: `expo export -p web` produces the static SPA, which nginx serves with an
+SPA fallback (so deep links like `/diagnostics` work).
+
+```bash
+docker build -t softphone-fe .
+docker run --rm -p 8080:80 softphone-fe
+# open http://localhost:8080
+```
+
+> For real microphone access behind Docker, terminate **HTTPS** in front of nginx (or use it only
+> via `localhost`). The bundled `nginx.conf` long-caches the content-hashed assets under `_expo/`.
+
+## Configuration
+
+Open **Ustawienia** (gear icon). Configuration is stored in the browser's `localStorage` as one or
+more **profiles**.
+
+1. Create or select a profile.
+2. Fill in **SIP URI** (`sip:1001@sip.example.com`), **password**, and **WebSocket servers**
+   (one per line, e.g. `wss://sip.example.com:8089/ws`).
+3. (Optional) Add **STUN/TURN** servers. For TURN, fill username + credential.
+4. Choose the **ICE transport policy**: `all` (host + srflx + relay) or `relay` (force TURN).
+5. Click **"Zapisz i połącz"** (Save & connect).
+
+### Interop defaults
+
+The default profile is tuned to work across Asterisk / Kamailio / FreeSWITCH: session timers off,
+DTMF RFC2833, `bundlePolicy: max-bundle`, `rtcpMuxPolicy: require`, register expires 600 s. All
+adjustable per profile under **Advanced**.
+
+## Verifying a real call
+
+There is no SIP backend bundled here. To test end-to-end:
+
+1. Point a profile at your server and **Save & connect**.
+2. In `/diagnostics`, confirm **WS: connected** and **registration: registered**.
+3. Call an echo test (Asterisk `*43`, FreeSWITCH `9196`, or your loopback extension). You should
+   hear two-way audio.
+4. To verify TURN/relay: set ICE policy to `relay` with a working TURN server — the diagnostics
+   "media path" should read **relay**.
+5. To verify smart recovery: during a call toggle the network — an **ICE restart** entry appears in
+   the log and audio recovers.
+
+## Project structure
+
+```
+src/
+  app/                     # expo-router screens
+    _layout.tsx            # root Stack + persistent RemoteAudio & toasts + startup init
+    index.tsx              # dialer + in-call view + desktop diagnostics sidebar
+    settings.tsx           # profile editor
+    diagnostics.tsx        # live diagnostics panel
+    history.tsx            # call history
+  components/              # Dialpad, NumberDisplay, CallView, IncomingCallScreen,
+                           # DiagnosticsPanel, ProfileSwitcher, NotificationDisplay,
+                           # RemoteAudio (web audio sink), Icon, Select, Checkbox
+  lib/
+    sip/
+      types.ts             # SIP/WebRTC domain types
+      config.ts            # default profile, migration, UA/RTC config builders
+      JsSIPAdapter.ts      # the only module that talks to jssip
+      NetworkMonitor.ts    # network-change detection
+      stats.ts             # pure getStats() parsing
+      softphone.ts         # orchestrator + stores + UI actions
+    store.ts               # tiny reactive store (svelte/store-compatible API, no Svelte dep)
+    useStore.ts            # React hook binding a store to a component
+    profiles.ts            # persistent profile list + active profile, CRUD
+    mediaService.ts        # getUserMedia, device enumeration, mic level meter
+    stores.ts              # UI stores (dialed number, call state, history, …)
+    notifications.ts       # toast store
+  theme.ts                 # design tokens (dark palette, spacing, radii)
+```
+
+## Architecture notes
+
+- **Adapter pattern.** `JsSIPAdapter` is the only place that knows jssip. It translates jssip/WebRTC
+  events into neutral `EngineEvent`s. The `softphone` orchestrator consumes those and drives the
+  stores the UI binds to (via `useStore`). Swapping the SIP engine later means rewriting one file.
+- **STUN/TURN + ICE policy live in `pcConfig`** (per session via `buildRtcConfiguration`), never in
+  the jssip UA configuration.
+- **Explicit lifecycle.** Connecting/registering happens on an explicit `connect()` — editing a form
+  field does not re-create the UA.
+- **Remote audio** is a single persistent `<audio>` sink (`components/RemoteAudio.tsx`) mounted at
+  the app root, so playback survives the dialer ↔ in-call view switch.
+- **One call at a time**: additional incoming sessions are rejected `486 Busy Here`.
+- **Web-only today.** Going native later means swapping `JsSIPAdapter`/`RemoteAudio` for
+  react-native-webrtc behind the same interfaces; the orchestrator, state and screens stay.
