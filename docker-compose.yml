@@ -1,0 +1,13 @@
+services:
+  softphone:
+    build: .
+    image: softphone-fe
+    ports:
+      # Host:container. Behind a reverse proxy you can drop the published port and
+      # attach this service to the proxy's network instead.
+      - "8080:80"
+    volumes:
+      # Mount the full nginx.conf so it can be tweaked without rebuilding the image.
+      # The app bundle itself is baked into the image under /usr/share/nginx/html/app.
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped

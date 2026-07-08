@@ -73,16 +73,44 @@ npm run test
 ## Docker
 
 Multi-stage build: `expo export -p web` produces the static SPA, which nginx serves with an
-SPA fallback (so deep links like `/diagnostics` work).
+SPA fallback. The app is served under **`/app`** (Expo `experiments.baseUrl`), so it can sit behind
+a reverse proxy next to other, unrelated routes.
+
+```bash
+docker compose up --build -d
+# open http://localhost:8080/app/
+```
+
+or without compose:
 
 ```bash
 docker build -t softphone-fe .
 docker run --rm -p 8080:80 softphone-fe
-# open http://localhost:8080
+# open http://localhost:8080/app/
 ```
 
-> For real microphone access behind Docker, terminate **HTTPS** in front of nginx (or use it only
-> via `localhost`). The bundled `nginx.conf` long-caches the content-hashed assets under `_expo/`.
+`docker-compose.yml` bind-mounts the full `nginx.conf` (`./nginx.conf:/etc/nginx/nginx.conf:ro`), so
+you can tweak the server config without rebuilding — only the app bundle is baked into the image
+(under `/usr/share/nginx/html/app`). `nginx.conf` is a complete main config (events + http) and
+ships a secure TLS policy (`TLSv1.2`/`TLSv1.3`, hardened ciphers) plus a commented-out `listen 443`
+HTTPS server block you can enable by adding a certificate.
+
+### Behind a reverse proxy
+
+The container serves the app at `/app/` and expects the `/app` prefix to be **forwarded unchanged**
+(the asset/route URLs are baked with that prefix). A minimal outer nginx:
+
+```nginx
+location /app/ {
+    proxy_pass http://softphone:80;   # no URI part → path (incl. /app) is preserved
+}
+```
+
+Other unrelated routes on the same proxy are unaffected. To serve under a different base, change
+`experiments.baseUrl` in `app.json` **and** the `/app` locations in `nginx.conf`, then rebuild.
+
+> For real microphone access behind a proxy, terminate **HTTPS** in front (or use `localhost`).
+> The bundled `nginx.conf` long-caches the content-hashed assets under `/app/_expo/`.
 
 ## Configuration
 

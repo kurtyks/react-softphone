@@ -14,7 +14,11 @@ RUN npx expo export -p web
 
 # ---- serve stage: static hosting via nginx ---------------------------------
 FROM nginx:alpine AS serve
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# The app is served under /app (matches Expo experiments.baseUrl), so the files
+# live in an /app subdirectory and nginx serves them with `root`.
+COPY --from=build /app/dist /usr/share/nginx/html/app
+# Full main config (defines events/http + the /app server), so it replaces nginx.conf
+# rather than dropping a conf.d snippet.
+COPY nginx.conf /etc/nginx/nginx.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
