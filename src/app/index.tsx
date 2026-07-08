@@ -270,8 +270,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   sidebar: {
-    width: 384,
-    flexShrink: 0,
+    flex: 1,
+    minWidth: 0,
     borderLeftWidth: 1,
     borderLeftColor: colors.gray800,
     backgroundColor: 'rgba(17,24,39,0.4)',

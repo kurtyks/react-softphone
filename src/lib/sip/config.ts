@@ -139,14 +139,69 @@ export function buildRtcConfiguration(profile: SipProfile): RTCConfiguration {
 	return config;
 }
 
+/** Callback invoked for every raw SIP frame crossing a WebSocket, in both directions. */
+export type SipMessageTap = (direction: 'sent' | 'recv', message: string) => void;
+
+/**
+ * Wraps a JsSIP WebSocket socket so every SIP frame is mirrored to `onMessage` before
+ * jssip processes it. Outgoing frames go through the socket's `send`; incoming frames
+ * arrive via the `ondata` handler that jssip's Transport assigns — we expose that as an
+ * accessor whose getter returns a logging wrapper around the real handler.
+ */
+function tapSipSocket(socket: JsSIP.WebSocketInterface, onMessage: SipMessageTap): void {
+	const sock = socket as unknown as {
+		send: (data: string) => boolean;
+		ondata: ((data: string) => void) | null;
+	};
+
+	const origSend = sock.send.bind(sock);
+	sock.send = (data: string) => {
+		try {
+			onMessage('sent', String(data));
+		} catch {
+			/* never let logging break signalling */
+		}
+		return origSend(data);
+	};
+
+	let realOndata: ((data: string) => void) | null = null;
+	Object.defineProperty(sock, 'ondata', {
+		configurable: true,
+		enumerable: true,
+		get() {
+			if (!realOndata) return realOndata;
+			const handler = realOndata;
+			return (data: string) => {
+				try {
+					onMessage('recv', String(data));
+				} catch {
+					/* never let logging break signalling */
+				}
+				return handler(data);
+			};
+		},
+		set(fn: ((data: string) => void) | null) {
+			realOndata = fn;
+		}
+	});
+}
+
 /**
  * Builds the JsSIP.UA configuration. STUN/TURN are omitted — they go to pcConfig per session.
+ * When `onSipMessage` is given, every socket is tapped to mirror raw SIP frames to it.
  */
-export function buildUaConfiguration(profile: SipProfile): UAConfiguration {
+export function buildUaConfiguration(
+	profile: SipProfile,
+	onSipMessage?: SipMessageTap
+): UAConfiguration {
 	const sockets = profile.wsServers
 		.map((u) => u.trim())
 		.filter(Boolean)
-		.map((u) => new JsSIP.WebSocketInterface(u));
+		.map((u) => {
+			const socket = new JsSIP.WebSocketInterface(u);
+			if (onSipMessage) tapSipSocket(socket, onSipMessage);
+			return socket;
+		});
 
 	const config: UAConfiguration = {
 		uri: profile.uri.trim(),

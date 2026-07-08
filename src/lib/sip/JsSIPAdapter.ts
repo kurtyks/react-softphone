@@ -35,7 +35,9 @@ export class JsSIPAdapter {
 
 	start(): void {
 		if (this.ua) return;
-		const config = buildUaConfiguration(this.profile);
+		const config = buildUaConfiguration(this.profile, (dir, data) =>
+			this.handleSipMessage(dir, data)
+		);
 		if (!config.uri || (Array.isArray(config.sockets) && config.sockets.length === 0)) {
 			this.log('error', t('log.noUriWs'));
 			return;
@@ -406,4 +408,30 @@ export class JsSIPAdapter {
 	private log(level: 'info' | 'success' | 'warning' | 'error', message: string): void {
 		this.emit({ type: 'log', level, message });
 	}
+
+	/**
+	 * Mirrors a raw SIP frame: a concise first-line summary into the diagnostics log,
+	 * and the full message (plus peer chatter) into the browser console, colourised green.
+	 */
+	private handleSipMessage(direction: 'sent' | 'recv', data: string): void {
+		if (!data || !data.trim()) return; // skip WebSocket keep-alive (CRLF) pings
+		const firstLine = data.split('\r\n', 1)[0]?.trim() ?? '';
+		if (!firstLine) return;
+		const arrow = direction === 'sent' ? '→' : '←';
+		this.log('info', `SIP ${arrow} ${summarizeSipLine(firstLine)}`);
+		if (typeof console !== 'undefined') {
+			const label = direction === 'sent' ? 'SIP TX ▶' : 'SIP RX ◀';
+			console.log(
+				`%c${label} ${firstLine}\n%c${data}`,
+				'color:#16a34a;font-weight:bold',
+				'color:#16a34a'
+			);
+		}
+	}
+}
+
+/** Condenses a SIP request/status line for the log: "INVITE sip:bob@dom" or "200 OK". */
+function summarizeSipLine(line: string): string {
+	if (line.startsWith('SIP/2.0')) return line.replace(/^SIP\/2\.0\s+/, '');
+	return line.replace(/\s+SIP\/2\.0\s*$/, '');
 }
