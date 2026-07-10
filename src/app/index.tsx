@@ -1,7 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
 import {
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -34,8 +32,6 @@ import { makeCall, registrationState, wsState } from '@/lib/sip/softphone';
 import { useStore } from '@/lib/useStore';
 import { useT } from '@/lib/i18n';
 import { colors, radius } from '@/theme';
-
-const VALID_KEYS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '#'];
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -80,26 +76,6 @@ export default function HomeScreen() {
     makeCall(dialed);
   }
 
-  // Physical-keyboard dialing (web only).
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (get(callState) !== 'idle') return;
-      if (VALID_KEYS.includes(e.key)) {
-        e.preventDefault();
-        dialedNumber.update((n) => n + e.key);
-      } else if (e.key === 'Backspace') {
-        e.preventDefault();
-        dialedNumber.update((n) => n.slice(0, -1));
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        startCall();
-      }
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
   return (
     <View style={styles.screen}>
       <View style={styles.mainColumn}>
@@ -134,7 +110,7 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.dialerBody}>
-              <NumberDisplay />
+              <NumberDisplay onSubmit={startCall} />
             </View>
 
             <View style={styles.footer}>

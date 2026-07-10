@@ -42,6 +42,7 @@ const en: Dict = {
 
   // Diagnostics panel
   'diag.title': 'Diagnostics',
+  'diag.connection': 'Connection',
   'diag.profile': 'Profile',
   'diag.icePolicy': 'ICE policy',
   'diag.websocket': 'WebSocket',
@@ -165,6 +166,9 @@ const en: Dict = {
   'log.iceCandidateError': 'ICE candidate error: {detail}',
   'log.iceRestart': 'ICE restart: {reason}',
   'log.endParty': 'party: {originator}',
+  'log.dtmfSent': 'DTMF → {tone} ({mode})',
+  'log.dtmfNoSession': 'DTMF ignored — no established call.',
+  'log.dtmfError': 'DTMF error: {err}',
   'log.unknownCause': 'unknown',
   'log.iceReasonState': 'ICE state {state}',
   'cause.notConnected': 'not connected',
@@ -196,6 +200,7 @@ const pl: Dict = {
   'incoming.from': 'Połączenie przychodzące od',
 
   'diag.title': 'Diagnostyka',
+  'diag.connection': 'Połączenie',
   'diag.profile': 'Profil',
   'diag.icePolicy': 'ICE policy',
   'diag.websocket': 'WebSocket',
@@ -315,6 +320,9 @@ const pl: Dict = {
   'log.iceCandidateError': 'Błąd kandydata ICE: {detail}',
   'log.iceRestart': 'ICE restart: {reason}',
   'log.endParty': 'strona: {originator}',
+  'log.dtmfSent': 'DTMF → {tone} ({mode})',
+  'log.dtmfNoSession': 'DTMF pominięty — brak aktywnej rozmowy.',
+  'log.dtmfError': 'Błąd DTMF: {err}',
   'log.unknownCause': 'nieznana',
   'log.iceReasonState': 'ICE w stanie {state}',
   'cause.notConnected': 'nie połączono',

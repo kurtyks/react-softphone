@@ -16,6 +16,7 @@ const NAME_MAP: Record<string, React.ComponentProps<typeof FontAwesome6>['name']
   'phone-slash': 'phone-slash',
   'phone-alt': 'phone',
   'chevron-down': 'chevron-down',
+  'chevron-right': 'chevron-right',
   keyboard: 'keyboard',
   play: 'play',
   pause: 'pause',

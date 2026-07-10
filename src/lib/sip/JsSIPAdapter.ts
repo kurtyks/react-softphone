@@ -177,9 +177,17 @@ export class JsSIPAdapter {
 	}
 
 	sendDtmf(tone: string): void {
-		if (!this.session) return;
+		if (!this.session || !this.session.isEstablished()) {
+			this.log('warning', t('log.dtmfNoSession'));
+			return;
+		}
 		const transportType = JsSIP.C.DTMF_TRANSPORT[this.profile.dtmfMode];
-		this.session.sendDTMF(tone, { transportType });
+		try {
+			this.session.sendDTMF(tone, { transportType });
+			this.log('info', t('log.dtmfSent', { tone, mode: this.profile.dtmfMode }));
+		} catch (err) {
+			this.log('error', t('log.dtmfError', { err: String(err) }));
+		}
 	}
 
 	transfer(target: string): void {
@@ -420,11 +428,14 @@ export class JsSIPAdapter {
 		const arrow = direction === 'sent' ? '→' : '←';
 		this.log('info', `SIP ${arrow} ${summarizeSipLine(firstLine)}`);
 		if (typeof console !== 'undefined') {
-			const label = direction === 'sent' ? 'SIP TX ▶' : 'SIP RX ◀';
+			// Distinct colours per direction: outgoing (TX) blue, incoming (RX) green.
+			const isTx = direction === 'sent';
+			const label = isTx ? 'SIP TX ▶' : 'SIP RX ◀';
+			const color = isTx ? '#2563eb' : '#16a34a';
 			console.log(
 				`%c${label} ${firstLine}\n%c${data}`,
-				'color:#16a34a;font-weight:bold',
-				'color:#16a34a'
+				`color:${color};font-weight:bold`,
+				`color:${color}`
 			);
 		}
 	}

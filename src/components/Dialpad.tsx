@@ -29,8 +29,16 @@ export function Dialpad({ onKeyPress }: { onKeyPress: (key: string) => void }) {
           style={({ pressed }) => [styles.key, pressed && styles.keyPressed]}
           onPress={() => onKeyPress(key.main)}
         >
-          <Text style={styles.main}>{key.main}</Text>
-          {key.sub ? <Text style={styles.sub}>{key.sub}</Text> : null}
+          {/* selectable={false} + userSelect:'none' stop the browser from selecting the
+              glyph on tap, which otherwise swallows the press (and thus DTMF). */}
+          <Text selectable={false} style={styles.main}>
+            {key.main}
+          </Text>
+          {key.sub ? (
+            <Text selectable={false} style={styles.sub}>
+              {key.sub}
+            </Text>
+          ) : null}
         </Pressable>
       ))}
     </View>
@@ -53,9 +61,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gray700,
     borderRadius: radius.full,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    userSelect: 'none',
+    cursor: 'pointer'
   },
   keyPressed: { backgroundColor: colors.gray600 },
-  main: { fontSize: 30, fontWeight: '300', color: colors.white },
-  sub: { fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: colors.gray400 }
+  main: { fontSize: 30, fontWeight: '300', color: colors.white, userSelect: 'none' },
+  sub: {
+    fontSize: 11,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: colors.gray400,
+    userSelect: 'none'
+  }
 });

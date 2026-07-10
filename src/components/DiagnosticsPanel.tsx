@@ -1,9 +1,11 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { activeProfile } from '@/lib/profiles';
 import { diagnostics, registrationState, wsState } from '@/lib/sip/softphone';
 import { useStore } from '@/lib/useStore';
 import { useT } from '@/lib/i18n';
 import { colors, mono, radius } from '@/theme';
+import { Icon } from './Icon';
 
 function fmtTime(at: number): string {
   const d = new Date(at);
@@ -45,6 +47,26 @@ function Badge({ text, ok, warn }: { text: string; ok: boolean; warn?: boolean }
   );
 }
 
+/** A collapsible diagnostics block. Default expanded; tap the header to fold it away. */
+function CollapsibleSection({
+  title,
+  children
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+  return (
+    <View style={styles.section}>
+      <Pressable style={styles.sectionHeader} onPress={() => setOpen((o) => !o)}>
+        <Text style={styles.heading}>{title}</Text>
+        <Icon name={open ? 'chevron-down' : 'chevron-right'} size={12} color={colors.gray400} />
+      </Pressable>
+      {open && <View style={styles.sectionBody}>{children}</View>}
+    </View>
+  );
+}
+
 /** Live SIP/WebRTC diagnostics: connection, ICE path, RTP metrics and an event log. */
 export function DiagnosticsPanel() {
   const t = useT();
@@ -56,7 +78,7 @@ export function DiagnosticsPanel() {
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.section}>
+      <CollapsibleSection title={t('diag.connection')}>
         <Row label={t('diag.profile')}>
           <Text style={styles.value}>{profile?.name ?? '—'}</Text>
         </Row>
@@ -69,10 +91,9 @@ export function DiagnosticsPanel() {
         <Row label={t('diag.registration')}>
           <Badge text={reg} ok={reg === 'registered'} warn={reg === 'registering'} />
         </Row>
-      </View>
+      </CollapsibleSection>
 
-      <View style={styles.section}>
-        <Text style={styles.heading}>{t('diag.webrtcIce')}</Text>
+      <CollapsibleSection title={t('diag.webrtcIce')}>
         <Row label={t('diag.iceConnection')}>
           <Text style={styles.valueMono}>{diag.iceConnectionState}</Text>
         </Row>
@@ -102,10 +123,9 @@ export function DiagnosticsPanel() {
               : ''}
           </Text>
         </Row>
-      </View>
+      </CollapsibleSection>
 
-      <View style={styles.section}>
-        <Text style={styles.heading}>{t('diag.rtpAudio')}</Text>
+      <CollapsibleSection title={t('diag.rtpAudio')}>
         <Row label={t('diag.codec')}>
           <Text style={styles.valueMono}>{rtp.codec}</Text>
         </Row>
@@ -136,10 +156,9 @@ export function DiagnosticsPanel() {
         <Row label={t('diag.outbound')}>
           <Text style={styles.valueMono}>{rtp.outboundKbps} kbps</Text>
         </Row>
-      </View>
+      </CollapsibleSection>
 
-      <View style={styles.section}>
-        <Text style={styles.heading}>{t('diag.eventLog')}</Text>
+      <CollapsibleSection title={t('diag.eventLog')}>
         <ScrollView style={styles.log}>
           {diag.log.length === 0 ? (
             <Text style={styles.subtle}>{t('diag.noEvents')}</Text>
@@ -152,15 +171,23 @@ export function DiagnosticsPanel() {
             ))
           )}
         </ScrollView>
-      </View>
+      </CollapsibleSection>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { gap: 16 },
-  section: { gap: 8, padding: 16, backgroundColor: colors.gray800, borderRadius: radius.lg },
-  heading: { color: colors.white, fontWeight: '600', fontSize: 14, marginBottom: 2 },
+  section: { padding: 16, backgroundColor: colors.gray800, borderRadius: radius.lg },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    userSelect: 'none',
+    cursor: 'pointer'
+  },
+  sectionBody: { gap: 8, marginTop: 10 },
+  heading: { color: colors.white, fontWeight: '600', fontSize: 14 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowLabel: { color: colors.gray400, fontSize: 13 },
   value: { color: colors.white, fontSize: 13 },
