@@ -1,6 +1,6 @@
 import * as JsSIP from 'jssip';
 import type { UAConfiguration } from 'jssip/lib/UA';
-import type { IceServerConfig, SipProfile } from './types';
+import type { CustomHeader, IceServerConfig, SipHeaderTarget, SipProfile } from './types';
 
 /** Generates a short, unique profile id. */
 export function makeId(): string {
@@ -32,6 +32,7 @@ export function defaultProfile(overrides: Partial<SipProfile> = {}): SipProfile 
 		sessionTimers: false,
 		noAnswerTimeout: 60,
 		dtmfMode: 'RFC2833',
+		customHeaders: [],
 
 		iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
 		iceTransportPolicy: 'all',
@@ -59,8 +60,67 @@ export function normalizeProfile(p: Partial<SipProfile>): SipProfile {
 		id: p.id ?? base.id,
 		wsServers: Array.isArray(p.wsServers) ? p.wsServers : base.wsServers,
 		iceServers: Array.isArray(p.iceServers) ? p.iceServers : base.iceServers,
+		customHeaders: Array.isArray(p.customHeaders)
+			? p.customHeaders.map(normalizeCustomHeader)
+			: base.customHeaders,
 		smart: { ...base.smart, ...(p.smart ?? {}) }
 	};
+}
+
+/** A new, empty custom header row (enabled, sent on INVITE only). */
+export function defaultCustomHeader(overrides: Partial<CustomHeader> = {}): CustomHeader {
+	return {
+		name: '',
+		value: '',
+		enabled: true,
+		targets: { register: false, invite: true, answer: false, bye: false },
+		...overrides
+	};
+}
+
+function normalizeCustomHeader(h: Partial<CustomHeader>): CustomHeader {
+	const base = defaultCustomHeader();
+	return {
+		name: typeof h.name === 'string' ? h.name : '',
+		value: typeof h.value === 'string' ? h.value : '',
+		enabled: h.enabled ?? base.enabled,
+		targets: { ...base.targets, ...(h.targets ?? {}) }
+	};
+}
+
+/** RFC 3261 `token` — the allowed characters of a header field name. */
+const HEADER_NAME_RE = /^[A-Za-z0-9!#$%&'*+\-.^_`|~]+$/;
+
+/**
+ * Headers jssip builds itself (or derives from the SDP/transaction); overriding them via
+ * extraHeaders would produce a malformed or duplicated message. Compact forms included.
+ */
+const RESERVED_HEADERS = new Set([
+	'via', 'v', 'from', 'f', 'to', 't', 'call-id', 'i', 'cseq', 'contact', 'm',
+	'max-forwards', 'content-type', 'c', 'content-length', 'l', 'route', 'record-route'
+]);
+
+export type CustomHeaderError = 'emptyName' | 'invalidName' | 'reservedName' | 'invalidValue';
+
+/** Validates a custom header; returns null when it is safe to send. */
+export function validateCustomHeader(h: Pick<CustomHeader, 'name' | 'value'>): CustomHeaderError | null {
+	const name = h.name.trim();
+	if (!name) return 'emptyName';
+	if (!HEADER_NAME_RE.test(name)) return 'invalidName';
+	if (RESERVED_HEADERS.has(name.toLowerCase())) return 'reservedName';
+	// CR/LF would allow injecting extra header lines or breaking the message framing.
+	if (/[\r\n]/.test(h.value)) return 'invalidValue';
+	return null;
+}
+
+/**
+ * Builds the jssip `extraHeaders` list (`"Name: value"`) for one target message:
+ * enabled headers with that target checked, skipping invalid ones.
+ */
+export function buildExtraHeaders(headers: CustomHeader[], target: SipHeaderTarget): string[] {
+	return headers
+		.filter((h) => h.enabled && h.targets[target] && validateCustomHeader(h) === null)
+		.map((h) => `${h.name.trim()}: ${h.value.trim()}`);
 }
 
 /**

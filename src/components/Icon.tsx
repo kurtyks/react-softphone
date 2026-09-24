@@ -37,7 +37,8 @@ const NAME_MAP: Record<string, React.ComponentProps<typeof FontAwesome6>['name']
   'exclamation-triangle': 'triangle-exclamation',
   'times-circle': 'circle-xmark',
   'info-circle': 'circle-info',
-  times: 'xmark'
+  times: 'xmark',
+  tags: 'tags'
 };
 
 export interface IconProps {
