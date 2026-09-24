@@ -17,6 +17,7 @@ export const activeProfile = derived(
 
 /**
  * One-time startup initialization (browser only):
+ * - fills fields missing from profiles saved by an older version,
  * - migrates the old flat config if present,
  * - creates an empty default profile when there are none,
  * - selects an active profile if none is chosen.
@@ -29,8 +30,9 @@ export function initProfiles(): void {
 	if (list.length === 0) {
 		const migrated = migrateLegacyConfig();
 		list = [migrated ?? defaultProfile({ name: 'Default profile' })];
-		profiles.set(list);
 	}
+	// Persist the normalized list so profiles stored by an older version gain new fields.
+	profiles.set(list);
 
 	const id = get(activeProfileId);
 	if (!id || !list.some((p) => p.id === id)) {

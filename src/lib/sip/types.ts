@@ -23,6 +23,17 @@ export interface SmartSettings {
 	reconnectOnWsDrop: boolean;
 }
 
+/** SIP requests/responses a custom header can be attached to. */
+export type SipHeaderTarget = 'register' | 'invite' | 'answer' | 'bye';
+
+/** A user-defined extra SIP header (e.g. `X-CID: 123`), toggled per target message. */
+export interface CustomHeader {
+	name: string;
+	value: string;
+	enabled: boolean;
+	targets: Record<SipHeaderTarget, boolean>;
+}
+
 /** A complete SIP account profile — one config set for connecting to one backend. */
 export interface SipProfile {
 	id: string;
@@ -45,6 +56,7 @@ export interface SipProfile {
 	sessionTimers: boolean;
 	noAnswerTimeout: number;
 	dtmfMode: DtmfMode;
+	customHeaders: CustomHeader[];
 
 	// WebRTC / ICE
 	iceServers: IceServerConfig[];

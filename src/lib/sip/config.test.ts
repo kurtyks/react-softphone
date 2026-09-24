@@ -4,7 +4,10 @@ import {
 	normalizeProfile,
 	migrateLegacyConfig,
 	buildRtcConfiguration,
-	buildUaConfiguration
+	buildUaConfiguration,
+	buildExtraHeaders,
+	defaultCustomHeader,
+	validateCustomHeader
 } from './config';
 
 describe('defaultProfile', () => {
@@ -145,5 +148,48 @@ describe('migrateLegacyConfig', () => {
 		expect(p!.registerExpires).toBe(300);
 		expect(p!.sessionTimers).toBe(true);
 		expect(localStorage.getItem('sipConfig')).toBeNull();
+	});
+});
+
+describe('custom headers', () => {
+	it('defaults to an empty list and normalizes stored rows', () => {
+		expect(defaultProfile().customHeaders).toEqual([]);
+		const p = normalizeProfile({
+			customHeaders: [{ name: 'X-CID', value: '1', targets: { register: true } } as never]
+		});
+		expect(p.customHeaders[0]).toEqual({
+			name: 'X-CID',
+			value: '1',
+			enabled: true,
+			targets: { register: true, invite: true, answer: false, bye: false }
+		});
+		expect(normalizeProfile({ id: 'old' }).customHeaders).toEqual([]);
+	});
+
+	it('validates names and values', () => {
+		expect(validateCustomHeader({ name: 'X-CID', value: '123' })).toBeNull();
+		expect(validateCustomHeader({ name: '  ', value: '' })).toBe('emptyName');
+		expect(validateCustomHeader({ name: 'X CID', value: '' })).toBe('invalidName');
+		expect(validateCustomHeader({ name: 'X-CID:', value: '' })).toBe('invalidName');
+		expect(validateCustomHeader({ name: 'Call-ID', value: 'x' })).toBe('reservedName');
+		expect(validateCustomHeader({ name: 'contact', value: 'x' })).toBe('reservedName');
+		expect(validateCustomHeader({ name: 'X-A', value: 'a\r\nVia: evil' })).toBe('invalidValue');
+	});
+
+	it('builds extraHeaders per target, skipping disabled and invalid rows', () => {
+		const headers = [
+			defaultCustomHeader({ name: ' X-CID ', value: ' 123 ' }),
+			defaultCustomHeader({
+				name: 'X-Reg',
+				value: 'r',
+				targets: { register: true, invite: false, answer: false, bye: true }
+			}),
+			defaultCustomHeader({ name: 'X-Off', value: 'x', enabled: false }),
+			defaultCustomHeader({ name: 'Via', value: 'x' })
+		];
+		expect(buildExtraHeaders(headers, 'invite')).toEqual(['X-CID: 123']);
+		expect(buildExtraHeaders(headers, 'register')).toEqual(['X-Reg: r']);
+		expect(buildExtraHeaders(headers, 'bye')).toEqual(['X-Reg: r']);
+		expect(buildExtraHeaders(headers, 'answer')).toEqual([]);
 	});
 });

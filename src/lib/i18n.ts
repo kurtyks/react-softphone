@@ -130,6 +130,21 @@ const en: Dict = {
   'settings.peerIdentityPh': 'e.g. user@idp.example.com (optional)',
   'settings.peerIdentityHint':
     'Target peer identity (identity assertion). Leave empty if unused.',
+  'settings.headers': 'Custom SIP headers',
+  'settings.headersSub':
+    'Extra headers (e.g. X-CID: 123) added to the selected SIP messages. Applied on the next connect.',
+  'settings.headerName': 'Header name',
+  'settings.headerValue': 'Value',
+  'settings.headerEnabled': 'Enabled',
+  'settings.headerTarget.register': 'REGISTER',
+  'settings.headerTarget.invite': 'INVITE',
+  'settings.headerTarget.answer': '200 OK (answer)',
+  'settings.headerTarget.bye': 'BYE',
+  'settings.addHeader': '+ Add header',
+  'settings.headerErr.emptyName': 'Header name is empty — it will not be sent.',
+  'settings.headerErr.invalidName': 'Invalid header name (allowed: letters, digits, - . _ ! etc.).',
+  'settings.headerErr.reservedName': 'This header is managed by the SIP stack and cannot be overridden.',
+  'settings.headerErr.invalidValue': 'Value must not contain line breaks.',
   'settings.save': 'Save',
   'settings.saveConnect': 'Save & connect',
 
@@ -286,6 +301,21 @@ const pl: Dict = {
   'settings.peerIdentityPh': 'np. user@idp.example.com (opcjonalne)',
   'settings.peerIdentityHint':
     'Docelowa tożsamość peera (identity assertion). Zostaw puste, jeśli nieużywane.',
+  'settings.headers': 'Własne nagłówki SIP',
+  'settings.headersSub':
+    'Dodatkowe nagłówki (np. X-CID: 123) dołączane do wybranych wiadomości SIP. Działają od następnego połączenia.',
+  'settings.headerName': 'Nazwa nagłówka',
+  'settings.headerValue': 'Wartość',
+  'settings.headerEnabled': 'Włączony',
+  'settings.headerTarget.register': 'REGISTER',
+  'settings.headerTarget.invite': 'INVITE',
+  'settings.headerTarget.answer': '200 OK (odebranie)',
+  'settings.headerTarget.bye': 'BYE',
+  'settings.addHeader': '+ Dodaj nagłówek',
+  'settings.headerErr.emptyName': 'Pusta nazwa nagłówka — nie zostanie wysłany.',
+  'settings.headerErr.invalidName': 'Niepoprawna nazwa nagłówka (dozwolone: litery, cyfry, - . _ ! itp.).',
+  'settings.headerErr.reservedName': 'Tym nagłówkiem zarządza stos SIP — nie można go nadpisać.',
+  'settings.headerErr.invalidValue': 'Wartość nie może zawierać znaków nowej linii.',
   'settings.save': 'Zapisz',
   'settings.saveConnect': 'Zapisz i połącz',
 

@@ -1,7 +1,7 @@
 import * as JsSIP from 'jssip';
 import type { UA, RTCSessionEvent } from 'jssip/lib/UA';
 import type { RTCSession, PeerConnectionEvent, EndEvent, IceCandidateEvent } from 'jssip/lib/RTCSession';
-import { buildRtcConfiguration, buildUaConfiguration } from './config';
+import { buildExtraHeaders, buildRtcConfiguration, buildUaConfiguration } from './config';
 import { emptyRtpSample, parseStats, type RtpSample } from './stats';
 import type { CallInfo, EngineEmit, SipProfile } from './types';
 import { t } from '../i18n';
@@ -45,6 +45,8 @@ export class JsSIPAdapter {
 
 		const ua = new JsSIP.UA(config);
 		this.ua = ua;
+		// Applies to REGISTER and the un-REGISTER sent on stop.
+		ua.registrator().setExtraHeaders(buildExtraHeaders(this.profile.customHeaders, 'register'));
 
 		ua.on('connecting', () => this.emit({ type: 'wsState', state: 'connecting' }));
 		ua.on('connected', () => {
@@ -125,6 +127,7 @@ export class JsSIPAdapter {
 				mediaStream: localStream,
 				pcConfig: buildRtcConfiguration(this.profile),
 				rtcOfferConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false },
+				extraHeaders: buildExtraHeaders(this.profile.customHeaders, 'invite'),
 				eventHandlers: {}
 			});
 			// The session is handled in handleNewSession (originator=local).
@@ -142,7 +145,8 @@ export class JsSIPAdapter {
 		this.session.answer({
 			mediaStream: localStream,
 			pcConfig: buildRtcConfiguration(this.profile),
-			rtcAnswerConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false }
+			rtcAnswerConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false },
+			extraHeaders: buildExtraHeaders(this.profile.customHeaders, 'answer')
 		});
 	}
 
@@ -155,10 +159,12 @@ export class JsSIPAdapter {
 		}
 	}
 
-	/** End the active call (BYE/CANCEL). */
+	/** End the active call (BYE/CANCEL). Custom headers go on BYE only — jssip sends CANCEL bare. */
 	hangup(): void {
 		try {
-			this.session?.terminate();
+			this.session?.terminate({
+				extraHeaders: buildExtraHeaders(this.profile.customHeaders, 'bye')
+			});
 		} catch {
 			/* noop */
 		}

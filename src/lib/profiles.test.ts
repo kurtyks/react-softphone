@@ -33,6 +33,13 @@ describe('initProfiles', () => {
 		expect(get(profiles)).toHaveLength(1);
 	});
 
+	it('backfills fields missing from profiles saved by an older version', () => {
+		const { customHeaders: _, ...legacy } = addedProfile('Old');
+		profiles.set([legacy as never]);
+		initProfiles();
+		expect(get(profiles)[0].customHeaders).toEqual([]);
+	});
+
 	it('fixes a dangling active id', () => {
 		profiles.set([addedProfile('A')]);
 		activeProfileId.set('does-not-exist');
@@ -108,6 +115,7 @@ function addedProfile(name: string) {
 		sessionTimers: false,
 		noAnswerTimeout: 60,
 		dtmfMode: 'RFC2833' as const,
+		customHeaders: [],
 		iceServers: [],
 		iceTransportPolicy: 'all' as const,
 		bundlePolicy: 'max-bundle' as RTCBundlePolicy,
