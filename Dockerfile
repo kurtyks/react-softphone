@@ -3,7 +3,7 @@
 # ---- base image versions (single place to bump) ----------------------------
 # Override with `--build-arg NODE_VERSION=...` / `--build-arg NGINX_VERSION=...`
 # or via the same-named env vars when using docker compose.
-ARG NODE_VERSION=22
+ARG NODE_VERSION=24
 ARG NGINX_VERSION=1.30.7
 
 # ---- build stage: produce the static web bundle ----------------------------
