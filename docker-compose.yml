@@ -1,6 +1,11 @@
 services:
   softphone:
-    build: .
+    build:
+      context: .
+      # Pass-through: uses the env var if set (shell or .env), else Dockerfile default.
+      args:
+        - NODE_VERSION
+        - NGINX_VERSION
     image: softphone-fe
     ports:
       # Host:container. Behind a reverse proxy you can drop the published port and

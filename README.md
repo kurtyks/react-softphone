@@ -89,6 +89,10 @@ docker run --rm -p 8080:80 softphone-fe
 # open http://localhost:8080/app/
 ```
 
+Base image versions are `ARG`s at the top of the `Dockerfile` (`NODE_VERSION`, `NGINX_VERSION`) —
+bump them there, or override: `docker build --build-arg NGINX_VERSION=1.30.8 .` (compose reads the
+same-named env vars / `.env`).
+
 `docker-compose.yml` bind-mounts the full `nginx.conf` (`./nginx.conf:/etc/nginx/nginx.conf:ro`), so
 you can tweak the server config without rebuilding — only the app bundle is baked into the image
 (under `/usr/share/nginx/html/app`). `nginx.conf` is a complete main config (events + http) and
